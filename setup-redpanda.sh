@@ -17,6 +17,8 @@ GEOCONTEXT_USER="${CONSUMER_USER_GEOCONTEXT_NAME:-geocontext}"
 GEOCONTEXT_PASS="${CONSUMER_USER_GEOCONTEXT_PASSWORD:-geocontext}"
 EVENTS_PROCESSOR_USER="${CONSUMER_USER_EVENTS_PROCESSOR_NAME:-events-processor}"
 EVENTS_PROCESSOR_PASS="${CONSUMER_USER_EVENTS_PROCESSOR_PASSWORD:-eventsprocessorpassword}"
+EVENTS_PROCESSOR_PRODUCER_USER="${PRODUCER_USER_EVENTS_PROCESSOR_NAME:-events-processor-producer}"
+EVENTS_PROCESSOR_PRODUCER_PASS="${PRODUCER_USER_EVENTS_PROCESSOR_PASSWORD:-eventsproducerpassword}"
 
 # Helper function to wait for Redpanda Admin API
 wait_for_admin() {
@@ -58,7 +60,7 @@ clear_pid_lock() {
 
 echo "[1/4] Starting Redpanda (Initial Setup)..."
 clear_pid_lock
-rpk redpanda start --overprovisioned --smp 1 --memory 1G --reserve-memory 0M --node-id "0" --check=false --kafka-addr PLAINTEXT://0.0.0.0:9092 --advertise-kafka-addr PLAINTEXT://localhost:9092 &
+rpk redpanda start --overprovisioned --smp 1 --memory 1G --reserve-memory 0M --node-id "0" --check=false --kafka-addr PLAINTEXT://0.0.0.0:9092 --advertise-kafka-addr PLAINTEXT://localhost:9092 --set redpanda.core_balancing_continuous=false &
 RP_PID=$!
 wait_for_admin
 
@@ -85,9 +87,10 @@ rpk security user create "$LIVE_CONSUMER_USER" -p "$LIVE_CONSUMER_PASS" --mechan
 rpk security user create "$CONSUMER_TRIPS_USER" -p "$CONSUMER_TRIPS_PASS" --mechanism SCRAM-SHA-256 || echo "Consumer trips user already exists"
 rpk security user create "$GEOCONTEXT_USER" -p "$GEOCONTEXT_PASS" --mechanism SCRAM-SHA-256 || echo "Geocontext user already exists"
 rpk security user create "$EVENTS_PROCESSOR_USER" -p "$EVENTS_PROCESSOR_PASS" --mechanism SCRAM-SHA-256 || echo "Events processor user already exists"
+rpk security user create "$EVENTS_PROCESSOR_PRODUCER_USER" -p "$EVENTS_PROCESSOR_PRODUCER_PASS" --mechanism SCRAM-SHA-256 || echo "Events processor producer user already exists"
 
 # Create topics individually and ignore "already exists" errors
-for topic in siscom-messages siscom-minimal caudal-events caudal-live caudal-flows geocontext-enriched; do
+for topic in siscom-messages siscom-minimal caudal-events caudal-live caudal-flows geocontext-enriched unit-events; do
   rpk topic create "$topic" \
     --brokers redpanda:9092 \
     -X sasl.mechanism=SCRAM-SHA-256 -X user="$SUPER_USER" -X pass="$SUPER_PASS" || echo "Topic $topic already exists"
@@ -107,6 +110,7 @@ rpk security acl create --allow-principal "User:$GEOCONTEXT_USER" --operation wr
 rpk security acl create --allow-principal "User:$GEOCONTEXT_USER" --operation read,describe --topic geocontext-enriched -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
 rpk security acl create --allow-principal "User:$GEOCONTEXT_USER" --operation read,describe --group 'geocontext-enrichment-group' -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
 rpk security acl create --allow-principal "User:$EVENTS_PROCESSOR_USER" --operation read,describe --group 'events-processor-group' --topic siscom-minimal -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
+rpk security acl create --allow-principal "User:$EVENTS_PROCESSOR_PRODUCER_USER" --operation write,describe --topic unit-events -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
 rpk cluster config set auto_create_topics_enabled false -X admin.hosts=127.0.0.1:9644 || true
 
 echo "Redpanda setup finished successfully."
