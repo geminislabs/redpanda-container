@@ -23,7 +23,8 @@ ALERT_USER_EVENTS_NAME="${CONSUMER_ALERT_USER_EVENTS_NAME:-events-alert-consumer
 ALERT_USER_EVENTS_PASSWORD="${CONSUMER_ALERT_USER_EVENTS_PASSWORD:-eventsalertconsumerpassword}"
 ALERT_RULES_PRODUCER_USER="${PRODUCER_ALERT_RULES_USER_NAME:-alerts-rules-producer}"
 ALERT_RULES_PRODUCER_PASS="${PRODUCER_ALERT_RULES_USER_PASSWORD:-alertsrulesproducerpassword}"
-
+ALERT_DISTRIBUTOR_USER="${ALERT_DISTRIBUTOR_USER_NAME:-alerts-distributor}"
+ALERT_DISTRIBUTOR_PASS="${ALERT_DISTRIBUTOR_USER_PASSWORD:-alertsdistributorpassword}"
 
 # Helper function to wait for Redpanda Admin API
 wait_for_admin() {
@@ -96,7 +97,8 @@ rpk security user create "$EVENTS_PROCESSOR_PRODUCER_USER" -p "$EVENTS_PROCESSOR
 rpk security user create "$ALERT_USER_EVENTS_NAME" -p "$ALERT_USER_EVENTS_PASSWORD" --mechanism SCRAM-SHA-256 || echo "Alert user events already exists"
 # User for producing alert_rules changes on topic alert_rules_updates. Is used by the alert rules management API to send updates.
 rpk security user create "$ALERT_RULES_PRODUCER_USER" -p "$ALERT_RULES_PRODUCER_PASS" --mechanism SCRAM-SHA-256 || echo "Alert rules producer user already exists"
-
+# User for distributing the generated alerts to the different consumers. It needs read access to unit-alerts and write access to alert distribution topics (not created yet).
+rpk security user create "$ALERT_DISTRIBUTOR_USER" -p "$ALERT_DISTRIBUTOR_PASS" --mechanism SCRAM-SHA-256 || echo "Alert distributor user already exists"
 # Create topics individually and ignore "already exists" errors
 for topic in siscom-messages siscom-minimal caudal-events caudal-live caudal-flows geocontext-enriched unit-events unit-alerts alert-rules-updates; do
   rpk topic create "$topic" \
@@ -135,6 +137,10 @@ rpk security acl create --allow-principal "User:$ALERT_USER_EVENTS_NAME" --opera
 rpk security acl create --allow-principal "User:$ALERT_USER_EVENTS_NAME" --operation write,describe --topic unit-alerts -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
 rpk security acl create --allow-principal "User:$ALERT_USER_EVENTS_NAME" --operation read,describe --group 'alert-processor-group' --topic unit-events -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
 rpk security acl create --allow-principal "User:$ALERT_USER_EVENTS_NAME" --operation read,describe --group 'alert-processor-group' --topic alert-rules-updates -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
+
+# Alert distributor needs read access to unit-alerts 
+rpk security acl create --allow-principal "User:$ALERT_DISTRIBUTOR_USER" --operation read,describe --topic unit-alerts -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
+rpk security acl create --allow-principal "User:$ALERT_DISTRIBUTOR_USER" --operation read,describe --group 'alert-distributor-group' -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
 
 # Consumer to persist the events and alerts in the database needs read access to both unit-events and unit-alerts topics, and also to the consumer groups to commit offsets.
 rpk security acl create --allow-principal "User:$CONSUMER_USER" --operation read,describe --topic unit-events -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
