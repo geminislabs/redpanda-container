@@ -100,7 +100,7 @@ rpk security user create "$ALERT_RULES_PRODUCER_USER" -p "$ALERT_RULES_PRODUCER_
 # User for distributing the generated alerts to the different consumers. It needs read access to unit-alerts and write access to alert distribution topics (not created yet).
 rpk security user create "$ALERT_DISTRIBUTOR_USER" -p "$ALERT_DISTRIBUTOR_PASS" --mechanism SCRAM-SHA-256 || echo "Alert distributor user already exists"
 # Create topics individually and ignore "already exists" errors
-for topic in siscom-messages siscom-minimal caudal-events caudal-live caudal-flows geocontext-enriched unit-events unit-alerts alert-rules-updates; do
+for topic in siscom-messages siscom-minimal caudal-events caudal-live caudal-flows geocontext-enriched unit-events unit-alerts alert-rules-updates geofences-updates; do
   rpk topic create "$topic" \
     --brokers redpanda:9092 \
     -X sasl.mechanism=SCRAM-SHA-256 -X user="$SUPER_USER" -X pass="$SUPER_PASS" || echo "Topic $topic already exists"
@@ -130,6 +130,8 @@ rpk security acl create --allow-principal "User:$GEOCONTEXT_USER" --operation re
 
 # Events processor needs to consume from siscom-minimal and produce to unit-events, so it needs read access to the first and write access to the second. It also needs access to the consumer group to commit offsets.
 rpk security acl create --allow-principal "User:$EVENTS_PROCESSOR_USER" --operation read,describe --group 'events-processor-group' --topic siscom-minimal -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
+rpk security acl create --allow-principal "User:$EVENTS_PROCESSOR_USER" --operation read,describe --group 'events-processor-group' --topic geofences-update -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
+rpk security acl create --allow-principal "User:$EVENTS_PROCESSOR_USER" --operation read,describe --topic geofences-update -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
 rpk security acl create --allow-principal "User:$EVENTS_PROCESSOR_PRODUCER_USER" --operation write,describe --topic unit-events -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
 
 # Alert processor needs to consume from siscom-minimal, produce to unit-alerts and read/write alert rules updates. It also needs access to the consumer groups to commit offsets.
@@ -152,6 +154,7 @@ rpk security acl create --allow-principal "User:$CONSUMER_USER" --operation read
 rpk security acl create --allow-principal "User:$ALERT_RULES_PRODUCER_USER" --operation write,describe --topic alert-rules-updates -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
 rpk security acl create --allow-principal "User:$ALERT_RULES_PRODUCER_USER" --operation write,describe --topic user-devices-updates -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
 rpk security acl create --allow-principal "User:$ALERT_RULES_PRODUCER_USER" --operation write,describe --topic user-units-updates -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
+rpk security acl create --allow-principal "User:$ALERT_RULES_PRODUCER_USER" --operation write,describe --topic geofences-updates -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
 
 
 # Disable auto topic creation to avoid mistakes. Topics should be created explicitly with the right configuration.
