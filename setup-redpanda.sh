@@ -104,7 +104,7 @@ rpk security user create "$ALERT_DISTRIBUTOR_USER" -p "$ALERT_DISTRIBUTOR_PASS" 
 # User for consuming siscom-minimal and producing telemetry data to db. It needs read access to siscom-minimal 
 rpk security user create "$TELEMETRY_CONSOLIDATOR_USER" -p "$TELEMETRY_CONSOLIDATOR_PASS" --mechanism SCRAM-SHA-256 || echo "Telemetry consolidator user already exists"
 # Create topics individually and ignore "already exists" errors
-for topic in siscom-messages siscom-minimal caudal-events caudal-live caudal-flows geocontext-enriched unit-events unit-alerts alert-rules-updates geofences-updates; do
+for topic in siscom-messages siscom-minimal caudal-events caudal-live caudal-flows geocontext-enriched unit-events unit-alerts alert-rules-updates geofences-updates siscom-trusted; do
   rpk topic create "$topic" \
     --brokers redpanda:9092 \
     -X sasl.mechanism=SCRAM-SHA-256 -X user="$SUPER_USER" -X pass="$SUPER_PASS" || echo "Topic $topic already exists"
@@ -114,6 +114,7 @@ done
 # SISCOM needs write access to siscom-messages and siscom-minimal, and read access to the same topics for the consumer. It also needs access to the consumer group to commit offsets.
 rpk security acl create --allow-principal "User:$PRODUCER_USER" --operation write,describe --topic siscom-messages -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
 rpk security acl create --allow-principal "User:$PRODUCER_USER" --operation write,describe --topic siscom-minimal -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
+rpk security acl create --allow-principal "User:$PRODUCER_USER" --operation write,describe --topic siscom-trusted -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
 rpk security acl create --allow-principal "User:$CONSUMER_USER" --operation read,describe --topic siscom-messages -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
 rpk security acl create --allow-principal "User:$CONSUMER_USER" --operation read,describe --group 'siscom-consumer-group' -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
 
