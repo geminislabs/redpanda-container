@@ -32,6 +32,9 @@ API_METERING_PRODUCER_PASS="${API_METERING_PRODUCER_USER_PASSWORD:-apimeteringpr
 API_METERING_CONSUMER_USER="${API_METERING_CONSUMER_USER_NAME:-api-metering-consumer}"
 API_METERING_CONSUMER_PASS="${API_METERING_CONSUMER_USER_PASSWORD:-apimeteringconsumerpassword}"
 
+MOBILITY_LOCATIONS_PRODUCER_USER="${MOBILITY_LOCATIONS_PRODUCER_USER_NAME:-mobility-locations-producer}"
+MOBILITY_LOCATIONS_PRODUCER_PASS="${MOBILITY_LOCATIONS_PRODUCER_USER_PASSWORD:-mobilitylocationsproducerpassword}"
+
 # Helper function to wait for Redpanda Admin API
 wait_for_admin() {
   echo "Waiting for Redpanda Admin API on 9644..."
@@ -102,6 +105,7 @@ rpk security user create "$EVENTS_PROCESSOR_USER" -p "$EVENTS_PROCESSOR_PASS" --
 rpk security user create "$EVENTS_PROCESSOR_PRODUCER_USER" -p "$EVENTS_PROCESSOR_PRODUCER_PASS" --mechanism SCRAM-SHA-256 || echo "Events processor producer user already exists"
 rpk security user create "$API_METERING_PRODUCER_USER" -p "$API_METERING_PRODUCER_PASS" --mechanism SCRAM-SHA-256 || echo "API metering producer user already exists"
 rpk security user create "$API_METERING_CONSUMER_USER" -p "$API_METERING_CONSUMER_PASS" --mechanism SCRAM-SHA-256 || echo "API metering consumer user already exists" 
+rpk security user create "$MOBILITY_LOCATIONS_PRODUCER_USER" -p "$MOBILITY_LOCATIONS_PRODUCER_PASS" --mechanism SCRAM-SHA-256 || echo "Mobility locations producer user already exists"
 rpk security user create "$ALERT_USER_EVENTS_NAME" -p "$ALERT_USER_EVENTS_PASSWORD" --mechanism SCRAM-SHA-256 || echo "Alert user events already exists"
 # User for producing alert_rules changes on topic alert_rules_updates. Is used by the alert rules management API to send updates.
 rpk security user create "$ALERT_RULES_PRODUCER_USER" -p "$ALERT_RULES_PRODUCER_PASS" --mechanism SCRAM-SHA-256 || echo "Alert rules producer user already exists"
@@ -109,8 +113,28 @@ rpk security user create "$ALERT_RULES_PRODUCER_USER" -p "$ALERT_RULES_PRODUCER_
 rpk security user create "$ALERT_DISTRIBUTOR_USER" -p "$ALERT_DISTRIBUTOR_PASS" --mechanism SCRAM-SHA-256 || echo "Alert distributor user already exists"
 # User for consuming siscom-minimal and producing telemetry data to db. It needs read access to siscom-minimal 
 rpk security user create "$TELEMETRY_CONSOLIDATOR_USER" -p "$TELEMETRY_CONSOLIDATOR_PASS" --mechanism SCRAM-SHA-256 || echo "Telemetry consolidator user already exists"
+
+# Keep topics in a single array so it is easy to maintain.
+TOPICS=(
+  "siscom-messages"
+  "siscom-minimal"
+  "caudal-events"
+  "caudal-live"
+  "caudal-flows"
+  "geocontext-enriched"
+  "unit-events"
+  "unit-alerts"
+  "alert-rules-updates"
+  "geofences-updates"
+  "siscom-trusted"
+  "api-events"
+  "mobility-locations-raw"
+  "entity-position-updates"
+  "mobility-locations"
+)
+
 # Create topics individually and ignore "already exists" errors
-for topic in siscom-messages siscom-minimal caudal-events caudal-live caudal-flows geocontext-enriched unit-events unit-alerts alert-rules-updates geofences-updates siscom-trusted api-events; do
+for topic in "${TOPICS[@]}"; do
   rpk topic create "$topic" \
     --brokers redpanda:9092 \
     -X sasl.mechanism=SCRAM-SHA-256 -X user="$SUPER_USER" -X pass="$SUPER_PASS" || echo "Topic $topic already exists"
@@ -137,6 +161,8 @@ rpk security acl create --allow-principal "User:$CONSUMER_TRIPS_USER" --operatio
 rpk security acl create --allow-principal "User:$GEOCONTEXT_USER" --operation read,describe --topic siscom-minimal -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
 rpk security acl create --allow-principal "User:$GEOCONTEXT_USER" --operation write,describe --topic geocontext-enriched -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
 rpk security acl create --allow-principal "User:$GEOCONTEXT_USER" --operation read,describe --topic geocontext-enriched -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
+rpk security acl create --allow-principal "User:$GEOCONTEXT_USER" --operation read,describe --topic mobility-locations-raw -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
+rpk security acl create --allow-principal "User:$GEOCONTEXT_USER" --operation write,describe --topic entity-position-updates -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
 rpk security acl create --allow-principal "User:$GEOCONTEXT_USER" --operation read,describe --group 'geocontext-enrichment-group' -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
 
 # Events processor needs to consume from siscom-minimal and produce to unit-events, so it needs read access to the first and write access to the second. It also needs access to the consumer group to commit offsets.
@@ -172,6 +198,8 @@ rpk security acl create --allow-principal "User:$ALERT_RULES_PRODUCER_USER" --op
 rpk security acl create --allow-principal "User:$ALERT_RULES_PRODUCER_USER" --operation write,describe --topic user-devices-updates -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
 rpk security acl create --allow-principal "User:$ALERT_RULES_PRODUCER_USER" --operation write,describe --topic user-units-updates -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
 rpk security acl create --allow-principal "User:$ALERT_RULES_PRODUCER_USER" --operation write,describe --topic geofences-updates -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
+rpk security acl create --allow-principal "User:$ALERT_RULES_PRODUCER_USER" --operation write,describe --topic mobility-locations-raw -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
+
 
 # API Metering producer needs write access to api-events topic to send the metering data. USED EN API METERING PRODUCER
 rpk security acl create --allow-principal "User:$API_METERING_PRODUCER_USER" --operation write,describe --topic api-events -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
@@ -180,6 +208,11 @@ rpk security acl create --allow-principal "User:$API_METERING_PRODUCER_USER" --o
 # API Metering consumer needs read access to api-events topic and the consumer group to commit offsets. USED EN API METERING CONSUMER
 rpk security acl create --allow-principal "User:$API_METERING_CONSUMER_USER" --operation read,describe --topic api-events -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
 rpk security acl create --allow-principal "User:$API_METERING_CONSUMER_USER" --operation read,describe --group 'api-metering-consumer-group' -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
+
+# Mobility locations processor needs read access to raw topic and write access to the processed topic.
+rpk security acl create --allow-principal "User:$MOBILITY_LOCATIONS_PRODUCER_USER" --operation read,describe --topic mobility-locations-raw -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
+rpk security acl create --allow-principal "User:$MOBILITY_LOCATIONS_PRODUCER_USER" --operation read,describe --group 'mobility-location-processor-group' -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
+rpk security acl create --allow-principal "User:$MOBILITY_LOCATIONS_PRODUCER_USER" --operation write,describe --topic mobility-locations -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
 
 
 
