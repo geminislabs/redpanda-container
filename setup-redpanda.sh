@@ -129,6 +129,8 @@ TOPICS=(
   "unit-alerts"
   "alert-rules-updates"
   "geofences-updates"
+  "user-devices-updates"
+  "team-rules-updates"
   "siscom-trusted"
   "api-events"
   "relationship-events"
@@ -202,6 +204,7 @@ rpk security acl create --allow-principal "User:$ALERT_RULES_PRODUCER_USER" --op
 rpk security acl create --allow-principal "User:$ALERT_RULES_PRODUCER_USER" --operation write,describe --topic user-units-updates -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
 rpk security acl create --allow-principal "User:$ALERT_RULES_PRODUCER_USER" --operation write,describe --topic geofences-updates -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
 rpk security acl create --allow-principal "User:$ALERT_RULES_PRODUCER_USER" --operation write,describe --topic mobility-locations-raw -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
+rpk security acl create --allow-principal "User:$ALERT_RULES_PRODUCER_USER" --operation write,describe --topic team-rules-updates -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
 
 
 # API Metering producer needs write access to api-events topic to send the metering data. USED EN API METERING PRODUCER
