@@ -135,6 +135,7 @@ TOPICS=(
   "api-events"
   "relationship-events"
   "mobility-locations-raw"
+  "unit-devices-updates"
   "entity-position-updates"
   "mobility-locations"
 )
@@ -177,6 +178,8 @@ rpk security acl create --allow-principal "User:$EVENTS_PROCESSOR_USER" --operat
 rpk security acl create --allow-principal "User:$EVENTS_PROCESSOR_USER" --operation read,describe --group 'events-processor-group' --topic geofences-update -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
 rpk security acl create --allow-principal "User:$EVENTS_PROCESSOR_USER" --operation read,describe --topic geofences-update -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
 rpk security acl create --allow-principal "User:$EVENTS_PROCESSOR_PRODUCER_USER" --operation write,describe --topic unit-events -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
+rpk security acl create --allow-principal "User:$EVENTS_PROCESSOR_PRODUCER_USER" --operation read,describe --topic unit-devices-updates -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
+rpk security acl create --allow-principal "User:$EVENTS_PROCESSOR_PRODUCER_USER" --operation read,describe --group 'events-processor-producer-group' -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
 
 # Alert processor needs to consume from siscom-minimal, produce to unit-alerts and read/write alert rules updates. It also needs access to the consumer groups to commit offsets.
 rpk security acl create --allow-principal "User:$ALERT_USER_EVENTS_NAME" --operation read,describe --group 'alerts-producer-group' -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
