@@ -130,6 +130,7 @@ TOPICS=(
   "alert-rules-updates"
   "geofences-updates"
   "user-devices-updates"
+  "user-units-updates"
   "team-rules-updates"
   "siscom-trusted"
   "api-events"
@@ -190,6 +191,12 @@ rpk security acl create --allow-principal "User:$ALERT_USER_EVENTS_NAME" --opera
 # Alert distributor needs read access to unit-alerts 
 rpk security acl create --allow-principal "User:$ALERT_DISTRIBUTOR_USER" --operation read,describe --topic unit-alerts -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
 rpk security acl create --allow-principal "User:$ALERT_DISTRIBUTOR_USER" --operation read,describe --group 'alert-distributor-group' -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
+rpk security acl create --allow-principal "User:$ALERT_DISTRIBUTOR_USER" --operation read,describe --topic unit-devices-updates -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
+rpk security acl create --allow-principal "User:$ALERT_DISTRIBUTOR_USER" --operation read,describe --group 'alert-distributor-unit-devices-updates' -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
+rpk security acl create --allow-principal "User:$ALERT_DISTRIBUTOR_USER" --operation read,describe --topic user-units-updates -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
+rpk security acl create --allow-principal "User:$ALERT_DISTRIBUTOR_USER" --operation read,describe --group 'alert-distributor-user-units-updates' -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
+rpk security acl create --allow-principal "User:$ALERT_DISTRIBUTOR_USER" --operation read,describe --topic user-devices-updates -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
+rpk security acl create --allow-principal "User:$ALERT_DISTRIBUTOR_USER" --operation read,describe --group 'alert-distributor-user-devices-updates' -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
 
 # Telemetry consolidator needs read access to siscom-minimal and to its consumer group for committing offsets.
 rpk security acl create --allow-principal "User:$TELEMETRY_CONSOLIDATOR_USER" --operation read,describe --topic siscom-minimal -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
