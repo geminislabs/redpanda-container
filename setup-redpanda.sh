@@ -135,14 +135,11 @@ TOPICS=(
   "unit-alerts"
   "alert-rules-updates"
   "geofences-updates"
-  "user-devices-updates"
-  "user-units-updates"
   "team-rules-updates"
   "siscom-trusted"
   "api-events"
   "relationship-events"
   "mobility-locations-raw"
-  "unit-devices-updates"
   "entity-position-updates"
   "mobility-locations"
 )
@@ -189,11 +186,7 @@ rpk security acl create --allow-principal "User:$GEOCONTEXT_USER" --operation re
 rpk security acl create --allow-principal "User:$EVENTS_PROCESSOR_USER" --operation read,describe --group 'events-processor-group' --topic siscom-minimal -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
 rpk security acl create --allow-principal "User:$EVENTS_PROCESSOR_USER" --operation read,describe --topic siscom-messages -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
 rpk security acl create --allow-principal "User:$EVENTS_PROCESSOR_USER" --operation read --group 'events-processor-group' -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
-rpk security acl create --allow-principal "User:$EVENTS_PROCESSOR_USER" --operation read,describe --group 'events-processor-group' --topic geofences-update -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
-rpk security acl create --allow-principal "User:$EVENTS_PROCESSOR_USER" --operation read,describe --topic geofences-update -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
 rpk security acl create --allow-principal "User:$EVENTS_PROCESSOR_PRODUCER_USER" --operation write,describe --topic unit-events -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
-rpk security acl create --allow-principal "User:$EVENTS_PROCESSOR_PRODUCER_USER" --operation read,describe --topic unit-devices-updates -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
-rpk security acl create --allow-principal "User:$EVENTS_PROCESSOR_PRODUCER_USER" --operation read,describe --group 'events-processor-producer-group' -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
 
 # Alert processor needs to consume from siscom-minimal, produce to unit-alerts and read/write alert rules updates. It also needs access to the consumer groups to commit offsets.
 rpk security acl create --allow-principal "User:$ALERT_USER_EVENTS_NAME" --operation read,describe --group 'alerts-producer-group' -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
@@ -204,12 +197,6 @@ rpk security acl create --allow-principal "User:$ALERT_USER_EVENTS_NAME" --opera
 # Alert distributor needs read access to unit-alerts 
 rpk security acl create --allow-principal "User:$ALERT_DISTRIBUTOR_USER" --operation read,describe --topic unit-alerts -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
 rpk security acl create --allow-principal "User:$ALERT_DISTRIBUTOR_USER" --operation read,describe --group 'alert-distributor-group' -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
-rpk security acl create --allow-principal "User:$ALERT_DISTRIBUTOR_USER" --operation read,describe --topic unit-devices-updates -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
-rpk security acl create --allow-principal "User:$ALERT_DISTRIBUTOR_USER" --operation read,describe --group 'alert-distributor-unit-devices-updates' -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
-rpk security acl create --allow-principal "User:$ALERT_DISTRIBUTOR_USER" --operation read,describe --topic user-units-updates -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
-rpk security acl create --allow-principal "User:$ALERT_DISTRIBUTOR_USER" --operation read,describe --group 'alert-distributor-user-units-updates' -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
-rpk security acl create --allow-principal "User:$ALERT_DISTRIBUTOR_USER" --operation read,describe --topic user-devices-updates -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
-rpk security acl create --allow-principal "User:$ALERT_DISTRIBUTOR_USER" --operation read,describe --group 'alert-distributor-user-devices-updates' -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
 
 # Telemetry consolidator needs read access to siscom-minimal and to its consumer group for committing offsets.
 rpk security acl create --allow-principal "User:$TELEMETRY_CONSOLIDATOR_USER" --operation read,describe --topic siscom-minimal -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
@@ -223,8 +210,6 @@ rpk security acl create --allow-principal "User:$CONSUMER_USER" --operation read
 
 # Alert rules producer needs write access to alert-rules-updates topic to send the updates when rules are created/updated/deleted. USED EN SISCOM_ADMIN_API
 rpk security acl create --allow-principal "User:$ALERT_RULES_PRODUCER_USER" --operation write,describe --topic alert-rules-updates -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
-rpk security acl create --allow-principal "User:$ALERT_RULES_PRODUCER_USER" --operation write,describe --topic user-devices-updates -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
-rpk security acl create --allow-principal "User:$ALERT_RULES_PRODUCER_USER" --operation write,describe --topic user-units-updates -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
 rpk security acl create --allow-principal "User:$ALERT_RULES_PRODUCER_USER" --operation write,describe --topic geofences-updates -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
 rpk security acl create --allow-principal "User:$ALERT_RULES_PRODUCER_USER" --operation write,describe --topic mobility-locations-raw -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
 rpk security acl create --allow-principal "User:$ALERT_RULES_PRODUCER_USER" --operation write,describe --topic team-rules-updates -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
