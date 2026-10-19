@@ -37,6 +37,10 @@ RELATIONSHIP_PROCESSOR_PRODUCER_PASS="${RELATIONSHIP_PROCESSOR_PRODUCER_USER_PAS
 MOBILITY_LOCATIONS_PRODUCER_USER="${MOBILITY_LOCATIONS_PRODUCER_USER_NAME:-mobility-locations-producer}"
 MOBILITY_LOCATIONS_PRODUCER_PASS="${MOBILITY_LOCATIONS_PRODUCER_USER_PASSWORD:-mobilitylocationsproducerpassword}"
 
+# Un usuario por servicio, no por propósito (ADR-008 §8 de siscom-admin-api).
+SISCOM_ADMIN_API_USER="${SISCOM_ADMIN_API_USER_NAME:-siscom-admin-api}"
+SISCOM_ADMIN_API_PASS="${SISCOM_ADMIN_API_USER_PASSWORD:-siscomadminapipassword}"
+
 # Helper function to wait for Redpanda Admin API
 wait_for_admin() {
   echo "Waiting for Redpanda Admin API on 9644..."
@@ -116,6 +120,8 @@ rpk security user create "$ALERT_RULES_PRODUCER_USER" -p "$ALERT_RULES_PRODUCER_
 rpk security user create "$ALERT_DISTRIBUTOR_USER" -p "$ALERT_DISTRIBUTOR_PASS" --mechanism SCRAM-SHA-256 || echo "Alert distributor user already exists"
 # User for consuming siscom-minimal and producing telemetry data to db. It needs read access to siscom-minimal 
 rpk security user create "$TELEMETRY_CONSOLIDATOR_USER" -p "$TELEMETRY_CONSOLIDATOR_PASS" --mechanism SCRAM-SHA-256 || echo "Telemetry consolidator user already exists"
+# siscom-admin-api publishes control-plane-events with its own user (ADR-008 §8).
+rpk security user create "$SISCOM_ADMIN_API_USER" -p "$SISCOM_ADMIN_API_PASS" --mechanism SCRAM-SHA-256 || echo "siscom-admin-api user already exists"
 
 # Keep topics in a single array so it is easy to maintain.
 TOPICS=(
@@ -147,6 +153,13 @@ for topic in "${TOPICS[@]}"; do
     --brokers redpanda:9092 \
     -X sasl.mechanism=SCRAM-SHA-256 -X user="$SUPER_USER" -X pass="$SUPER_PASS" || echo "Topic $topic already exists"
 done
+
+# control-plane-events: cambios de estado de siscom-admin-api (ADR-008). Una sola
+# partición a propósito: da orden total entre entidades. No va en TOPICS para
+# dejar explícito el -p 1.
+rpk topic create control-plane-events -p 1 \
+  --brokers redpanda:9092 \
+  -X sasl.mechanism=SCRAM-SHA-256 -X user="$SUPER_USER" -X pass="$SUPER_PASS" || echo "Topic control-plane-events already exists"
 
 # ACLs
 # SISCOM needs write access to siscom-messages and siscom-minimal, and read access to the same topics for the consumer. It also needs access to the consumer group to commit offsets.
@@ -234,6 +247,21 @@ rpk security acl create --allow-principal "User:$RELATIONSHIP_PROCESSOR_PRODUCER
 rpk security acl create --allow-principal "User:$MOBILITY_LOCATIONS_PRODUCER_USER" --operation read,describe --topic mobility-locations-raw -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
 rpk security acl create --allow-principal "User:$MOBILITY_LOCATIONS_PRODUCER_USER" --operation read,describe --group 'mobility-location-processor-group' -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
 rpk security acl create --allow-principal "User:$MOBILITY_LOCATIONS_PRODUCER_USER" --operation write,describe --topic mobility-locations -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
+
+# control-plane-events (ADR-008 de siscom-admin-api; contrato en
+# siscom-admin-api/docs/architecture/eventos-de-control.md, sección «Operación»).
+# siscom-admin-api escribe; los consumidores leen SIN grupo (no hacen commit:
+# cada arranque parte de la foto de las vistas control_plane.*), así que no
+# llevan ACL de grupo. Un consumidor sin su ACL NO ARRANCA: el 19/10/2026
+# faltó la de alert-distributor y producción se quedó sin alertas hasta crearla.
+rpk security acl create --allow-principal "User:$SISCOM_ADMIN_API_USER" --operation write,describe --topic control-plane-events -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
+rpk security acl create --allow-principal "User:$EVENTS_PROCESSOR_USER" --operation read,describe --topic control-plane-events -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
+rpk security acl create --allow-principal "User:$ALERT_DISTRIBUTOR_USER" --operation read,describe --topic control-plane-events -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
+
+# Geocercas de event-processor: el topic que publica siscom-admin-api es el
+# plural, con su propio grupo (KAFKA_GEOFENCES_GROUP_ID de event-processor).
+rpk security acl create --allow-principal "User:$EVENTS_PROCESSOR_USER" --operation read,describe --topic geofences-updates -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
+rpk security acl create --allow-principal "User:$EVENTS_PROCESSOR_USER" --operation read,describe --group 'events-processor-geofences' -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
 
 
 
