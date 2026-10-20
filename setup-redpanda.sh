@@ -240,6 +240,12 @@ rpk security acl create --allow-principal "User:$MOBILITY_LOCATIONS_PRODUCER_USE
 # llevan ACL de grupo. Un consumidor sin su ACL NO ARRANCA: el 19/10/2026
 # faltó la de alert-distributor y producción se quedó sin alertas hasta crearla.
 rpk security acl create --allow-principal "User:$SISCOM_ADMIN_API_USER" --operation write,describe --topic control-plane-events -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
+# El resto de lo que produce siscom-admin-api, con su propio usuario (ADR-008
+# §8: un usuario por servicio). Hasta el 20/10/2026 lo producía con
+# alerts-rules-producer, que se retira en cuanto admin-api cambie de usuario.
+for topic in alert-rules-updates geofences-updates mobility-locations-raw team-rules-updates; do
+  rpk security acl create --allow-principal "User:$SISCOM_ADMIN_API_USER" --operation write,describe --topic "$topic" -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
+done
 rpk security acl create --allow-principal "User:$EVENTS_PROCESSOR_USER" --operation read,describe --topic control-plane-events -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
 rpk security acl create --allow-principal "User:$ALERT_DISTRIBUTOR_USER" --operation read,describe --topic control-plane-events -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
 
