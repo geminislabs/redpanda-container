@@ -21,8 +21,6 @@ EVENTS_PROCESSOR_PRODUCER_USER="${PRODUCER_USER_EVENTS_PROCESSOR_NAME:-events-pr
 EVENTS_PROCESSOR_PRODUCER_PASS="${PRODUCER_USER_EVENTS_PROCESSOR_PASSWORD:-eventsproducerpassword}"
 ALERT_USER_EVENTS_NAME="${CONSUMER_ALERT_USER_EVENTS_NAME:-events-alert-consumer}"
 ALERT_USER_EVENTS_PASSWORD="${CONSUMER_ALERT_USER_EVENTS_PASSWORD:-eventsalertconsumerpassword}"
-ALERT_RULES_PRODUCER_USER="${PRODUCER_ALERT_RULES_USER_NAME:-alerts-rules-producer}"
-ALERT_RULES_PRODUCER_PASS="${PRODUCER_ALERT_RULES_USER_PASSWORD:-alertsrulesproducerpassword}"
 ALERT_DISTRIBUTOR_USER="${ALERT_DISTRIBUTOR_USER_NAME:-alerts-distributor}"
 ALERT_DISTRIBUTOR_PASS="${ALERT_DISTRIBUTOR_USER_PASSWORD:-alertsdistributorpassword}"
 TELEMETRY_CONSOLIDATOR_USER="${TELEMETRY_CONSOLIDATOR_USER_NAME:-telemetry-consolidator}"
@@ -114,8 +112,6 @@ rpk security user create "$API_METERING_CONSUMER_USER" -p "$API_METERING_CONSUME
 rpk security user create "$RELATIONSHIP_PROCESSOR_PRODUCER_USER" -p "$RELATIONSHIP_PROCESSOR_PRODUCER_PASS" --mechanism SCRAM-SHA-256 || echo "Relationship processor producer user already exists"
 rpk security user create "$MOBILITY_LOCATIONS_PRODUCER_USER" -p "$MOBILITY_LOCATIONS_PRODUCER_PASS" --mechanism SCRAM-SHA-256 || echo "Mobility locations producer user already exists"
 rpk security user create "$ALERT_USER_EVENTS_NAME" -p "$ALERT_USER_EVENTS_PASSWORD" --mechanism SCRAM-SHA-256 || echo "Alert user events already exists"
-# User for producing alert_rules changes on topic alert_rules_updates. Is used by the alert rules management API to send updates.
-rpk security user create "$ALERT_RULES_PRODUCER_USER" -p "$ALERT_RULES_PRODUCER_PASS" --mechanism SCRAM-SHA-256 || echo "Alert rules producer user already exists"
 # User for distributing the generated alerts to the different consumers. It needs read access to unit-alerts and write access to alert distribution topics (not created yet).
 rpk security user create "$ALERT_DISTRIBUTOR_USER" -p "$ALERT_DISTRIBUTOR_PASS" --mechanism SCRAM-SHA-256 || echo "Alert distributor user already exists"
 # User for consuming siscom-minimal and producing telemetry data to db. It needs read access to siscom-minimal 
@@ -208,11 +204,6 @@ rpk security acl create --allow-principal "User:$CONSUMER_USER" --operation read
 rpk security acl create --allow-principal "User:$CONSUMER_USER" --operation read,describe --topic unit-alerts -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
 rpk security acl create --allow-principal "User:$CONSUMER_USER" --operation read,describe --group 'siscom-consumer-alerts-group' -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
 
-# Alert rules producer needs write access to alert-rules-updates topic to send the updates when rules are created/updated/deleted. USED EN SISCOM_ADMIN_API
-rpk security acl create --allow-principal "User:$ALERT_RULES_PRODUCER_USER" --operation write,describe --topic alert-rules-updates -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
-rpk security acl create --allow-principal "User:$ALERT_RULES_PRODUCER_USER" --operation write,describe --topic geofences-updates -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
-rpk security acl create --allow-principal "User:$ALERT_RULES_PRODUCER_USER" --operation write,describe --topic mobility-locations-raw -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
-rpk security acl create --allow-principal "User:$ALERT_RULES_PRODUCER_USER" --operation write,describe --topic team-rules-updates -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
 
 
 # API Metering producer needs write access to api-events topic to send the metering data. USED EN API METERING PRODUCER
@@ -242,7 +233,7 @@ rpk security acl create --allow-principal "User:$MOBILITY_LOCATIONS_PRODUCER_USE
 rpk security acl create --allow-principal "User:$SISCOM_ADMIN_API_USER" --operation write,describe --topic control-plane-events -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
 # El resto de lo que produce siscom-admin-api, con su propio usuario (ADR-008
 # §8: un usuario por servicio). Hasta el 20/10/2026 lo producía con
-# alerts-rules-producer, que se retira en cuanto admin-api cambie de usuario.
+# alerts-rules-producer, que ya no existe.
 for topic in alert-rules-updates geofences-updates mobility-locations-raw team-rules-updates; do
   rpk security acl create --allow-principal "User:$SISCOM_ADMIN_API_USER" --operation write,describe --topic "$topic" -X user="$SUPER_USER" -X pass="$SUPER_PASS" || true
 done
